@@ -40,11 +40,11 @@
   .topbar {
     background: rgba(15, 23, 42, 0.95);
     border-bottom: 1px solid var(--border);
-    padding: 10px 16px;
+    padding: 8px 12px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
+    gap: 8px;
     position: sticky;
     top: 0;
     z-index: 40;
@@ -53,25 +53,32 @@
   .brand {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 1.15rem;
+    gap: 6px;
+    font-size: 1.05rem;
     font-weight: 700;
     color: #fff;
     cursor: pointer;
     white-space: nowrap;
+    flex-shrink: 0;
   }
   .brand-badge {
     background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-    padding: 4px 8px;
-    border-radius: 8px;
-    font-size: 0.95rem;
+    padding: 3px 7px;
+    border-radius: 7px;
+    font-size: 0.88rem;
   }
   .topbar-right {
     display: flex;
     align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
+    gap: 6px;
+    flex-wrap: nowrap;
     justify-content: flex-end;
+    min-width: 0;
+  }
+  @media (max-width: 520px) {
+    .brand { font-size: 0.95rem; }
+    .status-pill { padding: 4px 8px; font-size: 0.72rem; }
+    .icon-btn { padding: 5px 8px; font-size: 0.78rem; }
   }
   .status-pill {
     display: inline-flex;
@@ -143,7 +150,7 @@
     display: flex;
     flex-direction: column;
     position: sticky;
-    top: 53px;
+    top: 47px;
     z-index: 35;
     box-shadow: 0 4px 16px rgba(0,0,0,0.28);
   }
@@ -218,13 +225,14 @@
   /* 缩小模式：仅显示 2 行最新消息；放大模式：展开完整历史 */
   .chat-messages {
     overflow-y: auto;
-    padding: 4px 12px;
+    padding: 3px 12px;
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    max-height: 48px;
+    gap: 2px;
+    max-height: 42px;
     transition: max-height 0.22s ease;
   }
+  .chat-messages:empty { display: none; }
   .chat-dock.expanded .chat-messages {
     max-height: 240px;
     padding: 8px 12px;
@@ -321,37 +329,36 @@
   }
   .chat-send:hover { background: var(--primary-hover); }
 
-  /* 欢迎页面 */
-  .hero {
-    background: linear-gradient(135deg, rgba(37, 99, 235, 0.22), rgba(139, 92, 246, 0.18));
-    border: 1px solid rgba(59, 130, 246, 0.3);
-    border-radius: 16px;
-    padding: 24px;
-    margin-bottom: 20px;
+  /* 欢迎页面：紧凑顶部状态条 + 游戏卡片网格 */
+  .lobby-strip {
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.16), rgba(139, 92, 246, 0.12));
+    border: 1px solid rgba(59, 130, 246, 0.28);
+    border-radius: 10px;
+    padding: 8px 12px;
+    margin-bottom: 12px;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
-  }
-  .hero h1 { font-size: 1.75rem; margin-bottom: 6px; }
-  .hero p { color: var(--text-muted); font-size: 0.92rem; line-height: 1.5; }
-  .keepalive-box {
-    background: rgba(15, 23, 42, 0.65);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px 14px;
-    font-size: 0.8rem;
+    gap: 6px;
+    font-size: 0.78rem;
     color: var(--text-muted);
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
   }
   .game-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 16px;
-    margin-bottom: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  @media (max-width: 600px) {
+    .main-area { padding: 10px; }
+    .game-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .game-card { padding: 12px; gap: 8px; }
+    .game-icon { width: 38px; height: 38px; font-size: 1.25rem; }
+    .game-card h3 { font-size: 1rem; }
+    .game-card p { font-size: 0.75rem; line-height: 1.35; }
+    .card-actions { flex-direction: column; gap: 6px; }
+    .card-actions .btn { width: 100%; padding: 7px 8px; font-size: 0.8rem; }
   }
   .game-card {
     background: var(--bg-card);
@@ -626,14 +633,11 @@
   <div class="topbar-right">
     <div class="status-pill" id="connPill">
       <span class="dot" id="connDot"></span>
-      <span id="connText">检测连接中...</span>
+      <span id="connText">连接中</span>
+      <span>· <strong id="statOnline">1</strong>人</span>
     </div>
     <button class="icon-btn" id="btnNick">👤 <span id="myNickLabel">玩家</span></button>
     <button class="icon-btn" id="btnSound">🔊</button>
-    <button class="icon-btn" id="btnToggleChat">
-      💬 聊天
-      <span class="unread-badge" id="unreadBadge">0</span>
-    </button>
   </div>
 </header>
 
@@ -648,7 +652,7 @@
       <div class="chat-dock-controls">
         <button class="chat-tab active" id="tabGlobal" onclick="switchChatTab('global')">🌐 大厅</button>
         <button class="chat-tab" id="tabRoom" onclick="switchChatTab('room')">🏠 房间</button>
-        <button class="chat-zoom-btn" id="btnChatZoom" onclick="toggleChat()">⤢ 放大</button>
+        <button class="chat-zoom-btn" id="btnChatZoom" onclick="toggleChat()" style="position:relative;">⤢ 放大<span class="unread-badge" id="unreadBadge">0</span></button>
       </div>
     </div>
     <div class="chat-messages" id="chatMessages"></div>
@@ -666,11 +670,9 @@
   <main class="main-area">
     <!-- 欢迎页面：我的游戏空间 -->
     <section class="lobby-view active" id="viewLobby">
-      <div class="hero">
-        <div class="keepalive-box">
-          <div>🟢 在线人数：<strong id="statOnline">1</strong> 人 · 活跃房间：<strong id="statRooms">0</strong> 个</div>
-          <div id="keepaliveStatus">💓 保活心跳：已就绪（每 25 秒心跳维持）</div>
-        </div>
+      <div class="lobby-strip">
+        <span>🎮 欢迎来到「我的游戏空间」 · 活跃房间：<strong id="statRooms">0</strong> 个</span>
+        <span id="keepaliveStatus">💓 保活心跳已就绪</span>
       </div>
 
       <div class="game-grid">
@@ -977,7 +979,7 @@ function connectWS() {
     ws.onopen = () => {
       state.online = true;
       document.getElementById('connDot').classList.add('online');
-      document.getElementById('connText').textContent = '联机已连接';
+      document.getElementById('connText').textContent = '在线';
       ws.send(JSON.stringify({ type: 'set_nick', nick: state.nick }));
     };
 
@@ -1001,8 +1003,8 @@ function connectWS() {
 function setOfflineMode() {
   state.online = false;
   document.getElementById('connDot').classList.remove('online');
-  document.getElementById('connText').textContent = '单机演示模式';
-  document.getElementById('keepaliveStatus').textContent = '💡 当前为本地单机演示；部署到服务器后自动开启实时联机与保活';
+  document.getElementById('connText').textContent = '单机';
+  document.getElementById('keepaliveStatus').textContent = '💡 本地单机演示模式';
   if (state.globalMsgs.length === 0) {
     addChatMsg('global', { nick: '系统助手', game: 'lobby', text: '欢迎来到我的游戏空间！当前处于本地单机模式，所有游戏单机功能与聊天均可直接体验。', time: nowTime(), sys: true });
   }
@@ -1203,7 +1205,7 @@ function toggleChat(force) {
     box.scrollTop = box.scrollHeight;
   }
 }
-document.getElementById('btnToggleChat').onclick = () => toggleChat();
+
 
 function switchChatTab(tab) {
   state.chatTab = tab;
