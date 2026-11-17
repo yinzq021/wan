@@ -621,14 +621,139 @@
     flex-direction: column;
     gap: 12px;
   }
+
+  /* 主分页导航栏（第一页：游戏空间 / 第二页：我的财经 / 第三页：AI技术前沿） */
+  .main-nav {
+    background: #131d31;
+    border-bottom: 1px solid var(--border);
+    padding: 6px 12px;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+  }
+  .main-nav-btn {
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 0.86rem;
+    font-weight: 600;
+    background: var(--bg-card);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .main-nav-btn.active {
+    background: linear-gradient(135deg, #2563eb, #4f46e5);
+    color: #fff;
+    border-color: transparent;
+  }
+  .page-panel { display: none; }
+  .page-panel.active { display: block; }
+
+  /* 财经与 AI 分页样式 */
+  .portal-wrap { max-width: 1020px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+  .indep-chat-card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .indep-chat-head {
+    padding: 8px 12px;
+    background: rgba(15, 23, 42, 0.75);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.84rem;
+    font-weight: 700;
+  }
+  .indep-chat-list {
+    max-height: 150px;
+    min-height: 60px;
+    overflow-y: auto;
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .schedule-bar {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.28);
+    border-radius: 10px;
+    padding: 8px 12px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: #a7f3d0;
+  }
+  .market-section-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: #e2e8f0;
+  }
+  .quote-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+  }
+  .quote-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .quote-name { font-size: 0.82rem; color: var(--text-muted); }
+  .quote-price { font-size: 1.08rem; font-weight: 700; color: #fff; }
+  .quote-chg { font-size: 0.8rem; font-weight: 600; }
+  .quote-chg.up { color: #f87171; }
+  .quote-chg.down { color: #34d399; }
+  .news-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    gap: 12px;
+  }
+  .news-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .news-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+  }
+  .news-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .news-item a {
+    color: #e2e8f0;
+    text-decoration: none;
+    font-size: 0.86rem;
+    line-height: 1.4;
+  }
+  .news-item a:hover { color: #60a5fa; text-decoration: underline; }
+  .news-meta { font-size: 0.74rem; color: var(--text-muted); }
 </style>
 </head>
 <body>
 
 <header class="topbar">
   <div class="brand" id="btnHome">
-    <span class="brand-badge">🎮</span>
-    <span>我的游戏空间</span>
+    <span class="brand-badge">🏠</span>
+    <span>我的空间</span>
   </div>
   <div class="topbar-right">
     <div class="status-pill" id="connPill">
@@ -641,6 +766,13 @@
   </div>
 </header>
 
+<nav class="main-nav">
+  <button class="main-nav-btn active" id="navGames" onclick="switchMainPage('games')">🎮 我的游戏空间</button>
+  <button class="main-nav-btn" id="navFinance" onclick="switchMainPage('finance')">📈 我的财经</button>
+  <button class="main-nav-btn" id="navAi" onclick="switchMainPage('ai')">🤖 AI 技术前沿</button>
+</nav>
+
+<div class="page-panel active" id="pageGames">
 <div class="app-shell">
   <!-- 全页面常驻跑马灯聊天栏（支持放大 / 缩小到 2~3 行） -->
   <section class="chat-dock" id="chatDock">
@@ -887,6 +1019,82 @@
 
 </div>
 
+</div>
+</div>
+
+<!-- 第二分页：我的财经 -->
+<div class="page-panel" id="pageFinance" style="padding:14px;">
+  <div class="portal-wrap">
+    <!-- 顶部独立财经聊天窗口 -->
+    <div class="indep-chat-card">
+      <div class="indep-chat-head">
+        <span>💬 财经交流独立聊天室</span>
+        <span style="font-size:0.75rem;color:var(--text-muted);font-weight:400;">与游戏公屏完全独立</span>
+      </div>
+      <div class="indep-chat-list" id="financeChatList"></div>
+      <div class="chat-input-row">
+        <input class="chat-input" id="financeChatInput" placeholder="聊聊行情、股票、期货或外汇..." maxlength="200">
+        <button class="chat-send" onclick="sendChannelChat('finance')">发送</button>
+      </div>
+    </div>
+
+    <div class="schedule-bar">
+      <span>⏰ 每日固定更新：<strong>08:30 / 12:00 / 15:30 / 21:00</strong>（北京时间） · 上次更新：<strong id="finUpdated">--</strong></span>
+      <button class="btn btn-primary btn-sm" onclick="refreshPortalManual()">🔄 立即刷新</button>
+    </div>
+
+    <div>
+      <div class="market-section-title">📊 国内外主要股市</div>
+      <div class="quote-grid" id="finStocks"></div>
+    </div>
+    <div>
+      <div class="market-section-title">🛢️ 主要期货市场</div>
+      <div class="quote-grid" id="finFutures"></div>
+    </div>
+    <div>
+      <div class="market-section-title">💱 主要外汇市场</div>
+      <div class="quote-grid" id="finForex"></div>
+    </div>
+    <div class="news-card">
+      <div class="market-section-title" style="margin-bottom:2px;">📰 各大媒体热门财经新闻</div>
+      <div id="finNewsList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 第三分页：AI 技术前沿 -->
+<div class="page-panel" id="pageAi" style="padding:14px;">
+  <div class="portal-wrap">
+    <div class="indep-chat-card">
+      <div class="indep-chat-head">
+        <span>🤖 AI 技术前沿独立聊天室</span>
+        <span style="font-size:0.75rem;color:var(--text-muted);font-weight:400;">独立频道 · 讨论模型与技术</span>
+      </div>
+      <div class="indep-chat-list" id="aiChatList"></div>
+      <div class="chat-input-row">
+        <input class="chat-input" id="aiChatInput" placeholder="分享 AI 工具、开源项目或前沿论文..." maxlength="200">
+        <button class="chat-send" onclick="sendChannelChat('ai')">发送</button>
+      </div>
+    </div>
+
+    <div class="schedule-bar">
+      <span>⏰ 每日固定更新：<strong>08:30 / 12:00 / 15:30 / 21:00</strong>（北京时间） · 上次更新：<strong id="aiUpdated">--</strong></span>
+      <button class="btn btn-primary btn-sm" onclick="refreshPortalManual()">🔄 立即刷新</button>
+    </div>
+
+    <div class="news-grid">
+      <div class="news-card">
+        <div class="market-section-title">🚀 AI 技术前沿资讯</div>
+        <div id="aiNewsList"></div>
+      </div>
+      <div class="news-card">
+        <div class="market-section-title">🔥 各论坛高点击热门文章</div>
+        <div id="aiForumsList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- 昵称弹窗 -->
 <div class="modal-backdrop" id="nickModal">
   <div class="modal-card">
@@ -917,6 +1125,8 @@ const state = {
   chatTab: 'global',
   globalMsgs: [],
   roomMsgs: [],
+  financeMsgs: [],
+  aiMsgs: [],
   unreadChat: 0,
   soundOn: true
 };
@@ -1037,7 +1247,14 @@ function handleServerMsg(msg) {
       state.myId = msg.id;
       document.getElementById('statOnline').textContent = msg.onlineCount;
       document.getElementById('statRooms').textContent = msg.roomCount;
-      if (Array.isArray(msg.chatHistory)) {
+      if (msg.chatHistories) {
+        state.globalMsgs = msg.chatHistories.global || [];
+        state.financeMsgs = msg.chatHistories.finance || [];
+        state.aiMsgs = msg.chatHistories.ai || [];
+        renderChat();
+        renderChannelChat('finance');
+        renderChannelChat('ai');
+      } else if (Array.isArray(msg.chatHistory)) {
         state.globalMsgs = msg.chatHistory;
         renderChat();
       }
@@ -1052,6 +1269,10 @@ function handleServerMsg(msg) {
       break;
     case 'chat_global':
       addChatMsg('global', msg.message);
+      break;
+    case 'chat_channel':
+      if (msg.channel === 'global') addChatMsg('global', msg.message);
+      else addChannelMsg(msg.channel, msg.message);
       break;
     case 'chat_room':
       addChatMsg('room', msg.message);
@@ -1191,7 +1412,7 @@ function goLobby() {
   ttStopLoop();
   wsSend({ type: 'set_game', game: 'lobby' });
 }
-document.getElementById('btnHome').onclick = goLobby;
+document.getElementById('btnHome').onclick = () => { switchMainPage('games'); goLobby(); };
 
 function toggleChat(force) {
   const dock = document.getElementById('chatDock');
@@ -2675,13 +2896,176 @@ document.addEventListener('keydown', (e) => {
   if (e.code === 'KeyC' || e.code === 'ShiftLeft') ttAction('hold');
 });
 
-// ==================== 8. 启动初始化 ====================
+
+// ==================== 8. 三大主分页、独立聊天与定时资讯 ====================
+function switchMainPage(page) {
+  ['pageGames', 'pageFinance', 'pageAi'].forEach(id => document.getElementById(id).classList.remove('active'));
+  ['navGames', 'navFinance', 'navAi'].forEach(id => document.getElementById(id).classList.remove('active'));
+  if (page === 'games') {
+    document.getElementById('pageGames').classList.add('active');
+    document.getElementById('navGames').classList.add('active');
+  } else if (page === 'finance') {
+    document.getElementById('pageFinance').classList.add('active');
+    document.getElementById('navFinance').classList.add('active');
+    loadPortalData();
+  } else if (page === 'ai') {
+    document.getElementById('pageAi').classList.add('active');
+    document.getElementById('navAi').classList.add('active');
+    loadPortalData();
+  }
+}
+
+function addChannelMsg(ch, msg) {
+  const arr = ch === 'finance' ? state.financeMsgs : state.aiMsgs;
+  arr.push(msg);
+  if (arr.length > 60) arr.shift();
+  renderChannelChat(ch);
+  if (msg.senderId !== state.myId && !msg.sys) sfx.chat();
+}
+
+function renderChannelChat(ch) {
+  const box = document.getElementById(ch === 'finance' ? 'financeChatList' : 'aiChatList');
+  const list = ch === 'finance' ? state.financeMsgs : state.aiMsgs;
+  if (!list.length) {
+    box.innerHTML = `<div class="chat-msg sys">暂无消息，快来发表第一条${ch === 'finance' ? '财经' : 'AI技术'}看法吧！</div>`;
+    return;
+  }
+  box.innerHTML = list.map(m => {
+    const mine = m.senderId === state.myId;
+    return `
+      <div class="chat-msg ${mine ? 'mine' : ''}">
+        <div class="chat-meta">
+          <span class="chat-nick">${escapeHtml(m.nick)}</span>
+          <span>${escapeHtml(m.time || '')}</span>
+        </div>
+        <div>${escapeHtml(m.text)}</div>
+      </div>
+    `;
+  }).join('');
+  box.scrollTop = box.scrollHeight;
+}
+
+function sendChannelChat(ch) {
+  const inp = document.getElementById(ch === 'finance' ? 'financeChatInput' : 'aiChatInput');
+  const text = inp.value.trim();
+  if (!text) return;
+  inp.value = '';
+  if (state.online) {
+    wsSend({ type: 'chat_channel', channel: ch, text });
+  } else {
+    addChannelMsg(ch, { senderId: state.myId, nick: state.nick, text, time: nowTime() });
+  }
+}
+document.getElementById('financeChatInput').addEventListener('keydown', e => { if (e.key === 'Enter') sendChannelChat('finance'); });
+document.getElementById('aiChatInput').addEventListener('keydown', e => { if (e.key === 'Enter') sendChannelChat('ai'); });
+
+const DEMO_PORTAL = {
+  lastUpdated: '本地预览示例（部署后按北京时间 08:30/12:00/15:30/21:00 自动更新）',
+  finance: {
+    stocks: [
+      { name: '上证指数', price: '3325.40', change: '+0.62%', up: true },
+      { name: '深证成指', price: '10680.15', change: '+0.85%', up: true },
+      { name: '恒生指数', price: '19842.30', change: '-0.31%', up: false },
+      { name: '纳斯达克', price: '18920.50', change: '+1.12%', up: true },
+      { name: '标普 500', price: '5948.20', change: '+0.48%', up: true },
+      { name: '道琼斯', price: '43750.10', change: '-0.15%', up: false }
+    ],
+    futures: [
+      { name: 'COMEX 黄金', price: '2645.80', change: '+0.74%', up: true },
+      { name: 'WTI 原油', price: '69.42', change: '-0.58%', up: false },
+      { name: 'COMEX 铜', price: '4.1850', change: '+0.36%', up: true },
+      { name: 'COMEX 白银', price: '31.24', change: '+0.91%', up: true }
+    ],
+    forex: [
+      { name: '美元/人民币', price: '7.2340', change: '-0.08%', up: false },
+      { name: '欧元/美元', price: '1.0582', change: '+0.21%', up: true },
+      { name: '美元指数', price: '106.45', change: '-0.18%', up: false },
+      { name: '美元/日元', price: '154.20', change: '+0.32%', up: true }
+    ],
+    news: [
+      { title: '部署到 Render 服务器后，此处将自动抓取各大财经媒体最新热门头条', url: 'https://finance.yahoo.com/', source: 'Yahoo Finance', time: '定时更新' },
+      { title: '支持按北京时间 08:30、12:00、15:30、21:00 四个固定时段自动拉取更新', url: 'https://www.cnbc.com/world/', source: 'CNBC 财经', time: '定时更新' }
+    ]
+  },
+  ai: {
+    news: [
+      { title: '部署后自动聚合 TechCrunch AI 与 arXiv cs.AI 最新大模型研究与行业资讯', url: 'https://techcrunch.com/category/artificial-intelligence/', source: 'TechCrunch AI', time: '定时更新' },
+      { title: '每日固定 4 个时段自动刷新，也支持点击右上角「立即刷新」手动同步', url: 'https://arxiv.org/list/cs.AI/recent', source: 'arXiv cs.AI', time: '定时更新' }
+    ],
+    forums: [
+      { title: 'Hacker News 热门高赞技术讨论帖（部署后自动按热度排序）', url: 'https://news.ycombinator.com/', source: 'Hacker News', score: 520, comments: 184 },
+      { title: 'Reddit r/LocalLLaMA 开源大模型高点击讨论文章', url: 'https://www.reddit.com/r/LocalLLaMA/', source: 'Reddit', score: 410, comments: 96 }
+    ]
+  }
+};
+
+function renderQuotes(elId, list) {
+  document.getElementById(elId).innerHTML = (list || []).map(q => `
+    <div class="quote-card">
+      <div class="quote-name">${escapeHtml(q.name)}</div>
+      <div class="quote-price">${escapeHtml(q.price)}</div>
+      <div class="quote-chg ${q.up === true ? 'up' : q.up === false ? 'down' : ''}">${escapeHtml(q.change)}</div>
+    </div>
+  `).join('');
+}
+
+function renderPortal(data) {
+  document.getElementById('finUpdated').textContent = data.lastUpdated || '--';
+  document.getElementById('aiUpdated').textContent = data.lastUpdated || '--';
+  renderQuotes('finStocks', data.finance?.stocks);
+  renderQuotes('finFutures', data.finance?.futures);
+  renderQuotes('finForex', data.finance?.forex);
+
+  const finNews = data.finance?.news || [];
+  document.getElementById('finNewsList').innerHTML = finNews.length
+    ? finNews.map(n => `<div class="news-item"><a href="${escapeHtml(n.url)}" target="_blank" rel="noopener">${escapeHtml(n.title)}</a><span class="news-meta">${escapeHtml(n.source)} ${escapeHtml(n.time || '')}</span></div>`).join('')
+    : '<div class="news-meta">正在拉取最新财经新闻，请稍候点击「立即刷新」...</div>';
+
+  const aiNews = data.ai?.news || [];
+  document.getElementById('aiNewsList').innerHTML = aiNews.length
+    ? aiNews.map(n => `<div class="news-item"><a href="${escapeHtml(n.url)}" target="_blank" rel="noopener">${escapeHtml(n.title)}</a><span class="news-meta">${escapeHtml(n.source)} ${escapeHtml(n.time || '')}</span></div>`).join('')
+    : '<div class="news-meta">正在拉取 AI 前沿资讯...</div>';
+
+  const aiForums = data.ai?.forums || [];
+  document.getElementById('aiForumsList').innerHTML = aiForums.length
+    ? aiForums.map(n => `<div class="news-item"><a href="${escapeHtml(n.url)}" target="_blank" rel="noopener">${escapeHtml(n.title)}</a><span class="news-meta">${escapeHtml(n.source)} · 🔥 ${n.score || 0} 赞 · 💬 ${n.comments || 0} 评论</span></div>`).join('')
+    : '<div class="news-meta">正在拉取各论坛高点击文章...</div>';
+}
+
+async function loadPortalData() {
+  if (!canUseServer) { renderPortal(DEMO_PORTAL); return; }
+  try {
+    const res = await fetch('/api/portal', { cache: 'no-store' });
+    const data = await res.json();
+    renderPortal(data);
+  } catch (e) {
+    renderPortal(DEMO_PORTAL);
+  }
+}
+
+async function refreshPortalManual() {
+  if (!canUseServer) { showToast('当前为本地预览，部署到服务器后可实时刷新'); return; }
+  showToast('正在刷新最新行情与资讯...');
+  try {
+    const res = await fetch('/api/portal/refresh', { cache: 'no-store' });
+    const data = await res.json();
+    renderPortal(data);
+    showToast('已更新至最新数据！');
+  } catch (e) {
+    showToast('刷新失败，请稍后再试');
+  }
+}
+
+// ==================== 9. 启动初始化 ====================
 window.onload = () => {
   gmReset(false);
   xqReset(false);
   jqReset(false);
   ttInitBoard();
   ttDraw();
+  renderChannelChat('finance');
+  renderChannelChat('ai');
+  renderPortal(DEMO_PORTAL);
   connectWS();
 };
 </script>
