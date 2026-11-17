@@ -1,0 +1,22 @@
+{
+  "name": "my-game-space",
+  "version": "1.0.0",
+  "description": "我的游戏空间 - 集成五子棋、中国象棋、军棋、俄罗斯方块的多人联机与单机游戏大厅（含全页面聊天与保活机制）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "game",
+    "gomoku",
+    "xiangqi",
+    "junqi",
+    "tetris",
+    "websocket",
+    "chat"
+  ],
+  "license": "MIT"
+}
