@@ -1055,9 +1055,13 @@
       <div class="market-section-title">💱 主要外汇市场</div>
       <div class="quote-grid" id="finForex"></div>
     </div>
-    <div class="news-card">
-      <div class="market-section-title" style="margin-bottom:2px;">📰 各大媒体热门财经新闻</div>
-      <div id="finNewsList"></div>
+    <div>
+      <div class="market-section-title">📰 各大媒体热门财经新闻（每站 5+ 条）</div>
+      <div class="news-grid" id="finMediaGroups"></div>
+    </div>
+    <div>
+      <div class="market-section-title">🔥 国内三大财经论坛高点赞热帖（雪球 · 股吧 · 集思录）</div>
+      <div class="news-grid" id="finForumGroups"></div>
     </div>
   </div>
 </div>
@@ -1082,15 +1086,13 @@
       <button class="btn btn-primary btn-sm" onclick="refreshPortalManual()">🔄 立即刷新</button>
     </div>
 
-    <div class="news-grid">
-      <div class="news-card">
-        <div class="market-section-title">🚀 AI 技术前沿资讯</div>
-        <div id="aiNewsList"></div>
-      </div>
-      <div class="news-card">
-        <div class="market-section-title">🔥 各论坛高点击热门文章</div>
-        <div id="aiForumsList"></div>
-      </div>
+    <div>
+      <div class="market-section-title">🚀 中文 AI 技术前沿资讯（量子位 · 36氪 · 新浪科技）</div>
+      <div class="news-grid" id="aiMediaGroups"></div>
+    </div>
+    <div>
+      <div class="market-section-title">🔥 国内技术论坛高点击文章（稀土掘金 · V2EX · CSDN）</div>
+      <div class="news-grid" id="aiForumGroups"></div>
     </div>
   </div>
 </div>
@@ -2982,19 +2984,28 @@ const DEMO_PORTAL = {
       { name: '美元指数', price: '106.45', change: '-0.18%', up: false },
       { name: '美元/日元', price: '154.20', change: '+0.32%', up: true }
     ],
-    news: [
-      { title: '部署到 Render 服务器后，此处将自动抓取各大财经媒体最新热门头条', url: 'https://finance.yahoo.com/', source: 'Yahoo Finance', time: '定时更新' },
-      { title: '支持按北京时间 08:30、12:00、15:30、21:00 四个固定时段自动拉取更新', url: 'https://www.cnbc.com/world/', source: 'CNBC 财经', time: '定时更新' }
+    mediaGroups: [
+      { name: '东方财富网', url: 'https://kuaixun.eastmoney.com/', items: [{ title: '部署后自动抓取东方财富网最新 6 条快讯', url: 'https://kuaixun.eastmoney.com/', meta: '东方财富' }] },
+      { name: '新浪财经', url: 'https://finance.sina.com.cn/', items: [{ title: '部署后自动抓取新浪财经最新 6 条滚动要闻', url: 'https://finance.sina.com.cn/', meta: '新浪财经' }] },
+      { name: '微博热搜', url: 'https://s.weibo.com/top/summary', items: [{ title: '部署后自动抓取微博实时热搜榜', url: 'https://s.weibo.com/top/summary', meta: '微博' }] },
+      { name: '今日头条', url: 'https://www.toutiao.com/', items: [{ title: '部署后自动抓取今日头条热榜资讯', url: 'https://www.toutiao.com/', meta: '今日头条' }] }
+    ],
+    forumGroups: [
+      { name: '雪球热门', url: 'https://xueqiu.com/', items: [{ title: '部署后自动抓取雪球高赞讨论帖（6条）', url: 'https://xueqiu.com/', meta: '雪球' }] },
+      { name: '东方财富股吧', url: 'https://guba.eastmoney.com/', items: [{ title: '部署后自动抓取东方财富股吧热帖（6条）', url: 'https://guba.eastmoney.com/', meta: '股吧' }] },
+      { name: '集思录', url: 'https://www.jisilu.cn/home/explore/', items: [{ title: '部署后自动抓取集思录热门讨论（6条）', url: 'https://www.jisilu.cn/home/explore/', meta: '集思录' }] }
     ]
   },
   ai: {
-    news: [
-      { title: '部署后自动聚合 TechCrunch AI 与 arXiv cs.AI 最新大模型研究与行业资讯', url: 'https://techcrunch.com/category/artificial-intelligence/', source: 'TechCrunch AI', time: '定时更新' },
-      { title: '每日固定 4 个时段自动刷新，也支持点击右上角「立即刷新」手动同步', url: 'https://arxiv.org/list/cs.AI/recent', source: 'arXiv cs.AI', time: '定时更新' }
+    mediaGroups: [
+      { name: '量子位 AI', url: 'https://www.qbitai.com/', items: [{ title: '部署后自动抓取量子位最新中文 AI 资讯（6条）', url: 'https://www.qbitai.com/', meta: '量子位' }] },
+      { name: '36氪科技', url: 'https://36kr.com/', items: [{ title: '部署后自动抓取 36氪科技与 AI 动态（6条）', url: 'https://36kr.com/', meta: '36氪' }] },
+      { name: '新浪科技 AI', url: 'https://tech.sina.com.cn/', items: [{ title: '部署后自动抓取新浪科技前沿资讯（6条）', url: 'https://tech.sina.com.cn/', meta: '新浪科技' }] }
     ],
-    forums: [
-      { title: 'Hacker News 热门高赞技术讨论帖（部署后自动按热度排序）', url: 'https://news.ycombinator.com/', source: 'Hacker News', score: 520, comments: 184 },
-      { title: 'Reddit r/LocalLLaMA 开源大模型高点击讨论文章', url: 'https://www.reddit.com/r/LocalLLaMA/', source: 'Reddit', score: 410, comments: 96 }
+    forumGroups: [
+      { name: '稀土掘金 AI', url: 'https://juejin.cn/ai', items: [{ title: '部署后自动抓取掘金 AI 频道高赞高点击文章（6条）', url: 'https://juejin.cn/ai', meta: '稀土掘金' }] },
+      { name: 'V2EX 热门', url: 'https://www.v2ex.com/?tab=hot', items: [{ title: '部署后自动抓取 V2EX 热门技术讨论（6条）', url: 'https://www.v2ex.com/?tab=hot', meta: 'V2EX' }] },
+      { name: 'CSDN 热榜', url: 'https://blog.csdn.net/rank/list', items: [{ title: '部署后自动抓取 CSDN 高点击热榜文章（6条）', url: 'https://blog.csdn.net/rank/list', meta: 'CSDN' }] }
     ]
   }
 };
@@ -3009,27 +3020,35 @@ function renderQuotes(elId, list) {
   `).join('');
 }
 
+function renderNewsGroups(elId, groups) {
+  document.getElementById(elId).innerHTML = (groups || []).map(g => `
+    <div class="news-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <strong style="font-size:0.92rem;color:#93c5fd;">${escapeHtml(g.name)}</strong>
+        <a href="${escapeHtml(g.url)}" target="_blank" rel="noopener" style="font-size:0.75rem;color:var(--text-muted);text-decoration:none;">原站 ↗</a>
+      </div>
+      <div>
+        ${(g.items || []).map((n, idx) => `
+          <div class="news-item">
+            <a href="${escapeHtml(n.url)}" target="_blank" rel="noopener">${idx + 1}. ${escapeHtml(n.title)}</a>
+            <span class="news-meta">${escapeHtml(n.meta || '')}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
 function renderPortal(data) {
   document.getElementById('finUpdated').textContent = data.lastUpdated || '--';
   document.getElementById('aiUpdated').textContent = data.lastUpdated || '--';
   renderQuotes('finStocks', data.finance?.stocks);
   renderQuotes('finFutures', data.finance?.futures);
   renderQuotes('finForex', data.finance?.forex);
-
-  const finNews = data.finance?.news || [];
-  document.getElementById('finNewsList').innerHTML = finNews.length
-    ? finNews.map(n => `<div class="news-item"><a href="${escapeHtml(n.url)}" target="_blank" rel="noopener">${escapeHtml(n.title)}</a><span class="news-meta">${escapeHtml(n.source)} ${escapeHtml(n.time || '')}</span></div>`).join('')
-    : '<div class="news-meta">正在拉取最新财经新闻，请稍候点击「立即刷新」...</div>';
-
-  const aiNews = data.ai?.news || [];
-  document.getElementById('aiNewsList').innerHTML = aiNews.length
-    ? aiNews.map(n => `<div class="news-item"><a href="${escapeHtml(n.url)}" target="_blank" rel="noopener">${escapeHtml(n.title)}</a><span class="news-meta">${escapeHtml(n.source)} ${escapeHtml(n.time || '')}</span></div>`).join('')
-    : '<div class="news-meta">正在拉取 AI 前沿资讯...</div>';
-
-  const aiForums = data.ai?.forums || [];
-  document.getElementById('aiForumsList').innerHTML = aiForums.length
-    ? aiForums.map(n => `<div class="news-item"><a href="${escapeHtml(n.url)}" target="_blank" rel="noopener">${escapeHtml(n.title)}</a><span class="news-meta">${escapeHtml(n.source)} · 🔥 ${n.score || 0} 赞 · 💬 ${n.comments || 0} 评论</span></div>`).join('')
-    : '<div class="news-meta">正在拉取各论坛高点击文章...</div>';
+  renderNewsGroups('finMediaGroups', data.finance?.mediaGroups);
+  renderNewsGroups('finForumGroups', data.finance?.forumGroups);
+  renderNewsGroups('aiMediaGroups', data.ai?.mediaGroups);
+  renderNewsGroups('aiForumGroups', data.ai?.forumGroups);
 }
 
 async function loadPortalData() {
