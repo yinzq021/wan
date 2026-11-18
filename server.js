@@ -9,17 +9,17 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 const START_TIME = Date.now();
 
 // ==================== 内存状态管理 ====================
-const clients = new Map(); // clientId -> { id, socket, nick, roomId, game, isAlive }
-const rooms = new Map();   // roomId -> { id, game, hostId, guestId, createdAt, status }
+const clients = new Map();
+const rooms = new Map();
 const chatHistories = {
-  global: [],   // 第一分页：我的游戏空间公屏
-  finance: [],  // 第二分页：我的财经独立聊天
-  ai: []        // 第三分页：AI技术前沿独立聊天
+  global: [],
+  finance: [],
+  ai: []
 };
 const MAX_CHAT_HISTORY = 50;
 
 // ==================== 第二、三分页定时抓取缓存 ====================
-const SCHEDULE_HOURS_BJT = ['08:30', '12:00', '15:30', '21:00']; // 北京时间每日固定更新时间点
+const SCHEDULE_HOURS_BJT = ['08:30', '12:00', '15:30', '21:00'];
 let lastScheduledSlot = '';
 
 const portalCache = {
@@ -27,12 +27,12 @@ const portalCache = {
   nextSchedule: '08:30 / 12:00 / 15:30 / 21:00 (北京时间)',
   finance: {
     stocks: [
-      { name: '上证指数', symbol: '000001.SS', price: '--', change: '--', region: '国内' },
-      { name: '深证成指', symbol: '399001.SZ', price: '--', change: '--', region: '国内' },
-      { name: '恒生指数', symbol: '^HSI', price: '--', change: '--', region: '港股' },
-      { name: '纳斯达克', symbol: '^IXIC', price: '--', change: '--', region: '美股' },
-      { name: '标普 500', symbol: '^GSPC', price: '--', change: '--', region: '美股' },
-      { name: '道琼斯', symbol: '^DJI', price: '--', change: '--', region: '美股' }
+      { name: '上证指数', symbol: '000001.SS', price: '--', change: '--' },
+      { name: '深证成指', symbol: '399001.SZ', price: '--', change: '--' },
+      { name: '恒生指数', symbol: '^HSI', price: '--', change: '--' },
+      { name: '纳斯达克', symbol: '^IXIC', price: '--', change: '--' },
+      { name: '标普 500', symbol: '^GSPC', price: '--', change: '--' },
+      { name: '道琼斯', symbol: '^DJI', price: '--', change: '--' }
     ],
     futures: [
       { name: 'COMEX 黄金', symbol: 'GC=F', price: '--', change: '--' },
@@ -46,18 +46,17 @@ const portalCache = {
       { name: '美元指数', symbol: 'DX-Y.NYB', price: '--', change: '--' },
       { name: '美元/日元', symbol: 'USDJPY=X', price: '--', change: '--' }
     ],
-    news: []
+    mediaGroups: [], // 东方财富网、新浪财经、微博、今日头条（每站>=5条）
+    forumGroups: []  // 雪球、东方财富股吧、集思录（每站>=5条）
   },
   ai: {
-    news: [],
-    forums: []
+    mediaGroups: [], // 量子位、36氪、新浪科技（每站>=5条）
+    forumGroups: []  // 稀土掘金、V2EX、CSDN热榜（每站>=5条）
   }
 };
 
 function getBjtNow() {
-  const now = new Date();
-  const bjtMs = now.getTime() + 8 * 3600 * 1000;
-  const d = new Date(bjtMs);
+  const d = new Date(Date.now() + 8 * 3600 * 1000);
   const yyyy = d.getUTCFullYear();
   const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
   const dd = String(d.getUTCDate()).padStart(2, '0');
@@ -66,25 +65,29 @@ function getBjtNow() {
   return { dateStr: `${yyyy}-${mm}-${dd}`, hm: `${hh}:${mi}`, full: `${yyyy}-${mm}-${dd} ${hh}:${mi} BJT` };
 }
 
-async function fetchJson(url) {
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+
+async function fetchJson(url, opts = {}) {
   const res = await fetch(url, {
-    headers: { 'User-Agent': 'MyGameSpaceBot/1.0' },
+    ...opts,
+    headers: { 'User-Agent': UA, ...(opts.headers || {}) },
     signal: AbortSignal.timeout(7000)
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
 
-async function fetchText(url) {
+async function fetchText(url, opts = {}) {
   const res = await fetch(url, {
-    headers: { 'User-Agent': 'MyGameSpaceBot/1.0' },
+    ...opts,
+    headers: { 'User-Agent': UA, ...(opts.headers || {}) },
     signal: AbortSignal.timeout(7000)
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.text();
 }
 
-function parseRssItems(xml, sourceName, limit = 8) {
+function parseRssItems(xml, sourceName, limit = 6) {
   const items = [];
   const itemRe = /<item[\s>]([\s\S]*?)<\/item>/gi;
   let m;
@@ -99,7 +102,7 @@ function parseRssItems(xml, sourceName, limit = 8) {
     const link = getTag('link');
     const pubDate = getTag('pubDate');
     if (title && link) {
-      items.push({ title, url: link, source: sourceName, time: pubDate ? pubDate.slice(0, 16) : '' });
+      items.push({ title, url: link, meta: `${sourceName}${pubDate ? ' · ' + pubDate.slice(5, 16) : ''}` });
     }
   }
   return items;
@@ -120,103 +123,208 @@ async function fetchYahooQuote(symbol) {
   };
 }
 
+// 1. 东方财富网快讯 (>=5条)
+async function fetchEastmoneyNews() {
+  const url = 'https://np-listapi.eastmoney.com/comm/web/getFastNewsList?client=web&biz=web_724&fastColumn=102&sortEnd=&pageSize=8&req_trace=' + Date.now();
+  const data = await fetchJson(url, { headers: { Referer: 'https://kuaixun.eastmoney.com/' } });
+  const list = data?.data?.fastNewsList || [];
+  return list.slice(0, 6).map(it => ({
+    title: it.title || (it.summary || '').slice(0, 50),
+    url: it.code ? `https://finance.eastmoney.com/a/${it.code}.html` : 'https://kuaixun.eastmoney.com/',
+    meta: `东方财富 · ${it.showTime || ''}`
+  })).filter(x => x.title);
+}
+
+// 2. 新浪财经滚动新闻 (>=5条)
+async function fetchSinaNews(lid = '2516', label = '新浪财经') {
+  const url = `https://feed.mix.sina.com.cn/api/roll/get?pageid=153&lid=${lid}&k=&num=8&page=1`;
+  const data = await fetchJson(url, { headers: { Referer: 'https://finance.sina.com.cn/' } });
+  const list = data?.result?.data || [];
+  return list.slice(0, 6).map(it => ({
+    title: it.title,
+    url: it.url || it.wapurl || 'https://finance.sina.com.cn/',
+    meta: `${label} · ${it.media_name || ''}`
+  })).filter(x => x.title);
+}
+
+// 3. 微博热搜 (>=5条)
+async function fetchWeiboHot() {
+  const data = await fetchJson('https://weibo.com/ajax/side/hotSearch', {
+    headers: { Referer: 'https://s.weibo.com/' }
+  });
+  const list = data?.data?.realtime || [];
+  return list.slice(0, 6).map(it => ({
+    title: it.word || it.note,
+    url: `https://s.weibo.com/weibo?q=${encodeURIComponent('#' + (it.word || '') + '#')}`,
+    meta: `微博热搜 · 热度 ${it.num || ''}`
+  })).filter(x => x.title);
+}
+
+// 4. 今日头条热榜 (>=5条)
+async function fetchToutiaoHot() {
+  const data = await fetchJson('https://www.toutiao.com/hot-event/hot-board/?origin=toutiao_pc', {
+    headers: { Referer: 'https://www.toutiao.com/' }
+  });
+  const list = data?.data || [];
+  return list.slice(0, 6).map(it => ({
+    title: it.Title,
+    url: it.Url || 'https://www.toutiao.com/',
+    meta: `今日头条 · 热度 ${it.HotValue || ''}`
+  })).filter(x => x.title);
+}
+
+// 5. 国内三大财经论坛高点赞/热门帖（雪球、东方财富股吧、集思录）
+async function fetchXueqiuHot() {
+  // 先请求首页拿访客 cookie
+  const homeRes = await fetch('https://xueqiu.com/', {
+    headers: { 'User-Agent': UA },
+    signal: AbortSignal.timeout(6000)
+  });
+  const rawCookie = homeRes.headers.get('set-cookie') || '';
+  const cookie = rawCookie.split(',').map(c => c.split(';')[0]).join('; ');
+  const data = await fetchJson('https://xueqiu.com/statuses/hot/listV2.json?since_id=-1&max_id=-1&size=8', {
+    headers: { Cookie: cookie, Referer: 'https://xueqiu.com/' }
+  });
+  const list = data?.items || data?.list || [];
+  return list.slice(0, 6).map(it => {
+    const st = it.original_status || it;
+    const rawTitle = (st.title || st.text || '').replace(/<[^>]+>/g, '').trim();
+    return {
+      title: rawTitle.slice(0, 55) + (rawTitle.length > 55 ? '...' : ''),
+      url: st.target ? `https://xueqiu.com${st.target}` : 'https://xueqiu.com/',
+      meta: `雪球 · 👍 ${st.like_count || 0} 赞 · 💬 ${st.reply_count || 0}`
+    };
+  }).filter(x => x.title);
+}
+
+async function fetchGubaHot() {
+  const url = 'https://guba.eastmoney.com/interface/GetData.aspx?path=newtopic/api/Topic/HomePageListRead&param=ps%3D8%26p%3D1%26type%3D0';
+  const data = await fetchJson(url, { headers: { Referer: 'https://guba.eastmoney.com/' } });
+  const list = data?.re || data?.data || [];
+  return list.slice(0, 6).map(it => ({
+    title: it.post_title || it.title,
+    url: it.post_id ? `https://guba.eastmoney.com/news,${it.stockbar_code || 'cjpl'},${it.post_id}.html` : 'https://guba.eastmoney.com/',
+    meta: `东方财富股吧 · 👍 ${it.post_like_count || 0} · 💬 ${it.post_comment_count || 0}`
+  })).filter(x => x.title);
+}
+
+async function fetchJisiluHot() {
+  const html = await fetchText('https://www.jisilu.cn/home/explore/', {
+    headers: { Referer: 'https://www.jisilu.cn/' }
+  });
+  const items = [];
+  const re = /<a[^>]+href="(https?:\/\/www\.jisilu\.cn\/question\/\d+|\/question\/\d+)"[^>]*>([^<]{4,80})<\/a>/gi;
+  let m;
+  const seen = new Set();
+  while ((m = re.exec(html)) && items.length < 6) {
+    const href = m[1].startsWith('http') ? m[1] : `https://www.jisilu.cn${m[1]}`;
+    const title = m[2].trim();
+    if (title && !seen.has(href)) {
+      seen.add(href);
+      items.push({ title, url: href, meta: '集思录热门讨论' });
+    }
+  }
+  return items;
+}
+
+// 6. 中文 AI 技术论坛高点击（稀土掘金 AI、V2EX、CSDN）
+async function fetchJuejinAi() {
+  const data = await fetchJson('https://api.juejin.cn/recommend_api/v1/article/recommend_all_feed', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Referer: 'https://juejin.cn/' },
+    body: JSON.stringify({ id_type: 2, sort_type: 200, cate_id: '6809637773935378440', cursor: '0', limit: 8 })
+  });
+  const list = data?.data || [];
+  return list.slice(0, 6).map(it => {
+    const info = it.item_info?.article_info;
+    if (!info) return null;
+    return {
+      title: info.title,
+      url: `https://juejin.cn/post/${info.article_id}`,
+      meta: `稀土掘金 · 👍 ${info.digg_count || 0} · 👀 ${info.view_count || 0}`
+    };
+  }).filter(Boolean);
+}
+
+async function fetchV2exHot() {
+  const list = await fetchJson('https://www.v2ex.com/api/topics/hot.json');
+  return (list || []).slice(0, 6).map(it => ({
+    title: it.title,
+    url: it.url || `https://www.v2ex.com/t/${it.id}`,
+    meta: `V2EX · 💬 ${it.replies || 0} 回复`
+  }));
+}
+
+async function fetchCsdnHot() {
+  const data = await fetchJson('https://blog.csdn.net/phoenix/web/blog/hot-rank?page=0&pageSize=8', {
+    headers: { Referer: 'https://blog.csdn.net/' }
+  });
+  const list = data?.data || [];
+  return list.slice(0, 6).map(it => ({
+    title: it.articleTitle,
+    url: it.articleDetailUrl || 'https://blog.csdn.net/',
+    meta: `CSDN 热榜 · 🔥 热度 ${it.hotRankScore || ''} · 👀 ${it.viewCount || 0}`
+  })).filter(x => x.title);
+}
+
+async function safeGroup(name, fallbackUrl, fn) {
+  try {
+    const items = await fn();
+    if (items && items.length > 0) return { name, url: fallbackUrl, items };
+  } catch (e) {}
+  return {
+    name,
+    url: fallbackUrl,
+    items: [{ title: `暂未自动拉取到 ${name}（可能受机房IP限制），点击直接访问原站查看`, url: fallbackUrl, meta: '直达链接' }]
+  };
+}
+
 async function refreshPortalData(reason = 'manual') {
-  console.log(`[定时资讯] 开始刷新财经与 AI 前沿数据 (${reason})...`);
+  console.log(`[定时资讯] 开始刷新财经与中文 AI 前沿数据 (${reason})...`);
   const allQuoteItems = [
     ...portalCache.finance.stocks,
     ...portalCache.finance.futures,
     ...portalCache.finance.forex
   ];
 
-  // 并发抓取股市/期市/汇市行情
   await Promise.allSettled(
     allQuoteItems.map(async (item) => {
       try {
         const q = await fetchYahooQuote(item.symbol);
-        if (q) {
-          item.price = q.price;
-          item.change = q.change;
-          item.up = q.up;
-        }
+        if (q) { item.price = q.price; item.change = q.change; item.up = q.up; }
       } catch (e) {}
     })
   );
 
-  // 抓取财经媒体热门新闻 (Yahoo Finance RSS + CNBC RSS)
-  const finNews = [];
-  for (const feed of [
-    { url: 'https://finance.yahoo.com/news/rssindex', name: 'Yahoo Finance' },
-    { url: 'https://www.cnbc.com/id/100003114/device/rss/rss.html', name: 'CNBC 财经' }
-  ]) {
-    try {
-      const xml = await fetchText(feed.url);
-      finNews.push(...parseRssItems(xml, feed.name, 6));
-    } catch (e) {}
-  }
-  if (finNews.length > 0) portalCache.finance.news = finNews.slice(0, 12);
+  // 并行抓取第二分页（4大媒体 + 3大财经论坛，每站>=5条）
+  const [em, sinaFin, wb, tt, xq, gb, jsl] = await Promise.all([
+    safeGroup('东方财富网', 'https://kuaixun.eastmoney.com/', fetchEastmoneyNews),
+    safeGroup('新浪财经', 'https://finance.sina.com.cn/', () => fetchSinaNews('2516', '新浪财经')),
+    safeGroup('微博热搜', 'https://s.weibo.com/top/summary', fetchWeiboHot),
+    safeGroup('今日头条', 'https://www.toutiao.com/', fetchToutiaoHot),
+    safeGroup('雪球热门', 'https://xueqiu.com/', fetchXueqiuHot),
+    safeGroup('东方财富股吧', 'https://guba.eastmoney.com/', fetchGubaHot),
+    safeGroup('集思录', 'https://www.jisilu.cn/home/explore/', fetchJisiluHot)
+  ]);
+  portalCache.finance.mediaGroups = [em, sinaFin, wb, tt];
+  portalCache.finance.forumGroups = [xq, gb, jsl];
 
-  // 抓取 AI 技术前沿资讯 (arXiv cs.AI + HuggingFace/OpenAI/TechCrunch AI RSS)
-  const aiNews = [];
-  for (const feed of [
-    { url: 'https://techcrunch.com/category/artificial-intelligence/feed/', name: 'TechCrunch AI' },
-    { url: 'https://export.arxiv.org/rss/cs.AI', name: 'arXiv cs.AI' }
-  ]) {
-    try {
-      const xml = await fetchText(feed.url);
-      aiNews.push(...parseRssItems(xml, feed.name, 6));
-    } catch (e) {}
-  }
-  if (aiNews.length > 0) portalCache.ai.news = aiNews.slice(0, 12);
-
-  // 抓取各论坛高点击文章 (Hacker News Top Stories + Reddit r/LocalLLaMA)
-  const forumPosts = [];
-  try {
-    const ids = await fetchJson('https://hacker-news.firebaseio.com/v0/topstories.json');
-    const topIds = (ids || []).slice(0, 18);
-    const stories = await Promise.allSettled(
-      topIds.map(id => fetchJson(`https://hacker-news.firebaseio.com/v0/item/${id}.json`))
-    );
-    stories.forEach(s => {
-      if (s.status === 'fulfilled' && s.value && s.value.title) {
-        const st = s.value;
-        forumPosts.push({
-          title: st.title,
-          url: st.url || `https://news.ycombinator.com/item?id=${st.id}`,
-          source: 'Hacker News',
-          score: st.score || 0,
-          comments: st.descendants || 0
-        });
-      }
-    });
-  } catch (e) {}
-
-  try {
-    const rd = await fetchJson('https://www.reddit.com/r/LocalLLaMA/hot.json?limit=8');
-    const children = rd?.data?.children || [];
-    children.forEach(c => {
-      const d = c.data;
-      if (d && d.title && !d.stickied) {
-        forumPosts.push({
-          title: d.title,
-          url: `https://www.reddit.com${d.permalink}`,
-          source: 'Reddit r/LocalLLaMA',
-          score: d.ups || 0,
-          comments: d.num_comments || 0
-        });
-      }
-    });
-  } catch (e) {}
-
-  if (forumPosts.length > 0) {
-    forumPosts.sort((a, b) => (b.score || 0) - (a.score || 0));
-    portalCache.ai.forums = forumPosts.slice(0, 14);
-  }
+  // 并行抓取第三分页（中文 AI 资讯 + 国内技术论坛高点击，每站>=5条）
+  const [qbit, kr36, sinaTech, juejin, v2ex, csdn] = await Promise.all([
+    safeGroup('量子位 AI', 'https://www.qbitai.com/', async () => parseRssItems(await fetchText('https://www.qbitai.com/feed'), '量子位', 6)),
+    safeGroup('36氪科技', 'https://36kr.com/', async () => parseRssItems(await fetchText('https://www.36kr.com/feed'), '36氪', 6)),
+    safeGroup('新浪科技 AI', 'https://tech.sina.com.cn/', () => fetchSinaNews('2515', '新浪科技')),
+    safeGroup('稀土掘金 AI', 'https://juejin.cn/ai', fetchJuejinAi),
+    safeGroup('V2EX 热门', 'https://www.v2ex.com/?tab=hot', fetchV2exHot),
+    safeGroup('CSDN 热榜', 'https://blog.csdn.net/rank/list', fetchCsdnHot)
+  ]);
+  portalCache.ai.mediaGroups = [qbit, kr36, sinaTech];
+  portalCache.ai.forumGroups = [juejin, v2ex, csdn];
 
   portalCache.lastUpdated = getBjtNow().full;
   console.log(`[定时资讯] 刷新完成，时间: ${portalCache.lastUpdated}`);
 }
 
-// 每分钟检查是否到达每日固定更新时间点 (08:30, 12:00, 15:30, 21:00 BJT)
 setInterval(() => {
   const { dateStr, hm } = getBjtNow();
   if (SCHEDULE_HOURS_BJT.includes(hm)) {
@@ -228,7 +336,6 @@ setInterval(() => {
   }
 }, 30 * 1000);
 
-// 启动后立即拉取一次
 setTimeout(() => refreshPortalData('startup'), 500);
 
 const MIME_TYPES = {
@@ -245,11 +352,10 @@ const MIME_TYPES = {
 const server = http.createServer(async (req, res) => {
   const urlPath = (req.url || '/').split('?')[0];
 
-  // 保活专用健康检查接口
   if (urlPath === '/health' || urlPath === '/ping' || urlPath === '/keepalive') {
     const payload = {
       status: 'ok',
-      service: '我的游戏空间',
+      service: '我的空间',
       uptimeSeconds: Math.floor((Date.now() - START_TIME) / 1000),
       onlineUsers: clients.size,
       activeRooms: rooms.size,
@@ -260,7 +366,6 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 财经与 AI 资讯缓存接口
   if (urlPath === '/api/portal') {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify(portalCache));
@@ -274,7 +379,6 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 静态文件服务
   let filePath = path.join(PUBLIC_DIR, urlPath === '/' ? 'index.html' : urlPath);
   if (!filePath.startsWith(PUBLIC_DIR)) {
     res.writeHead(403);
@@ -285,11 +389,7 @@ const server = http.createServer(async (req, res) => {
   fs.readFile(filePath, (err, data) => {
     if (err) {
       fs.readFile(path.join(PUBLIC_DIR, 'index.html'), (err2, indexData) => {
-        if (err2) {
-          res.writeHead(404);
-          res.end('Not Found');
-          return;
-        }
+        if (err2) { res.writeHead(404); res.end('Not Found'); return; }
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
         res.end(indexData);
       });
@@ -328,9 +428,7 @@ function encodeWsFrame(str, opcode = 0x1) {
 
 function sendToClient(client, obj) {
   if (!client || client.socket.destroyed || !client.socket.writable) return;
-  try {
-    client.socket.write(encodeWsFrame(JSON.stringify(obj)));
-  } catch (e) {}
+  try { client.socket.write(encodeWsFrame(JSON.stringify(obj))); } catch (e) {}
 }
 
 function broadcastAll(obj, excludeId = null) {
@@ -347,23 +445,14 @@ function broadcastRoomList() {
   for (const r of rooms.values()) {
     if (r.status === 'waiting') {
       const host = clients.get(r.hostId);
-      openRooms.push({
-        id: r.id,
-        game: r.game,
-        hostNick: host ? host.nick : '玩家',
-        createdAt: r.createdAt
-      });
+      openRooms.push({ id: r.id, game: r.game, hostNick: host ? host.nick : '玩家', createdAt: r.createdAt });
     }
   }
   broadcastAll({ type: 'room_list', rooms: openRooms });
 }
 
 function broadcastStats() {
-  broadcastAll({
-    type: 'stats',
-    onlineCount: clients.size,
-    roomCount: rooms.size
-  });
+  broadcastAll({ type: 'stats', onlineCount: clients.size, roomCount: rooms.size });
 }
 
 function cleanupClientRoom(client) {
@@ -372,7 +461,6 @@ function cleanupClientRoom(client) {
   const oldRoomId = client.roomId;
   client.roomId = null;
   if (!room) return;
-
   const otherId = room.hostId === client.id ? room.guestId : room.hostId;
   const other = otherId ? clients.get(otherId) : null;
   if (other) {
@@ -399,20 +487,14 @@ function handleWsMessage(client, rawText) {
       client.isAlive = true;
       sendToClient(client, { type: 'pong', ts: Date.now() });
       break;
-
     case 'set_nick': {
       const clean = String(msg.nick || '').trim().slice(0, 16);
-      if (clean) {
-        client.nick = clean;
-        sendToClient(client, { type: 'nick_updated', nick: client.nick });
-      }
+      if (clean) { client.nick = clean; sendToClient(client, { type: 'nick_updated', nick: client.nick }); }
       break;
     }
-
     case 'set_game':
       client.game = String(msg.game || 'lobby');
       break;
-
     case 'chat_channel': {
       const ch = ['global', 'finance', 'ai'].includes(msg.channel) ? msg.channel : 'global';
       const text = String(msg.text || '').trim().slice(0, 300);
@@ -430,7 +512,6 @@ function handleWsMessage(client, rawText) {
       broadcastAll({ type: 'chat_channel', channel: ch, message: chatItem });
       break;
     }
-
     case 'chat_global': {
       const text = String(msg.text || '').trim().slice(0, 300);
       if (!text) return;
@@ -447,7 +528,6 @@ function handleWsMessage(client, rawText) {
       broadcastAll({ type: 'chat_channel', channel: 'global', message: chatItem });
       break;
     }
-
     case 'chat_room': {
       if (!client.roomId) return;
       const room = rooms.get(client.roomId);
@@ -466,7 +546,6 @@ function handleWsMessage(client, rawText) {
       if (guest) sendToClient(guest, { type: 'chat_room', message: chatItem });
       break;
     }
-
     case 'create_room': {
       cleanupClientRoom(client);
       const game = String(msg.game || 'gomoku');
@@ -479,7 +558,6 @@ function handleWsMessage(client, rawText) {
       broadcastStats();
       break;
     }
-
     case 'join_room': {
       const roomId = String(msg.roomId || '').trim();
       const room = rooms.get(roomId);
@@ -487,13 +565,11 @@ function handleWsMessage(client, rawText) {
       if (room.game !== msg.game) { sendToClient(client, { type: 'room_error', error: `该房间是「${room.game}」房间` }); return; }
       if (room.guestId || room.status !== 'waiting') { sendToClient(client, { type: 'room_error', error: '房间已满' }); return; }
       if (room.hostId === client.id) { sendToClient(client, { type: 'room_error', error: '你已在该房间中' }); return; }
-
       cleanupClientRoom(client);
       room.guestId = client.id;
       room.status = 'playing';
       client.roomId = roomId;
       client.game = room.game;
-
       const host = clients.get(room.hostId);
       sendToClient(client, { type: 'room_joined', roomId, game: room.game, role: 'guest', opponentNick: host ? host.nick : '房主' });
       if (host) sendToClient(host, { type: 'opponent_joined', roomId, game: room.game, role: 'host', opponentNick: client.nick });
@@ -501,11 +577,9 @@ function handleWsMessage(client, rawText) {
       broadcastStats();
       break;
     }
-
     case 'leave_room':
       cleanupClientRoom(client);
       break;
-
     case 'game_action': {
       if (!client.roomId) return;
       const room = rooms.get(client.roomId);
@@ -543,15 +617,7 @@ server.on('upgrade', (req, socket) => {
       openRooms.push({ id: r.id, game: r.game, hostNick: h ? h.nick : '玩家', createdAt: r.createdAt });
     }
   }
-  sendToClient(client, {
-    type: 'welcome',
-    id: clientId,
-    nick: defaultNick,
-    onlineCount: clients.size,
-    roomCount: rooms.size,
-    chatHistories,
-    rooms: openRooms
-  });
+  sendToClient(client, { type: 'welcome', id: clientId, nick: defaultNick, onlineCount: clients.size, roomCount: rooms.size, chatHistories, rooms: openRooms });
   broadcastStats();
 
   let buffer = Buffer.alloc(0);
@@ -615,5 +681,5 @@ if (KEEP_ALIVE_URL) {
 }
 
 server.listen(PORT, () => {
-  console.log(`我的游戏空间 服务器已启动: http://localhost:${PORT}`);
+  console.log(`我的空间 服务器已启动: http://localhost:${PORT}`);
 });
